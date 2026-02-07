@@ -1,0 +1,14 @@
+{
+  "run_id": "run_20260207_162905",
+  "run_name": "run_20260207_162905",
+  "source_filename": "supply_chain_judge_sample.xlsx",
+  "judges": [
+    "ragas_style_judge",
+    "lenient_prompt_judge"
+  ],
+  "rows": 10,
+  "evaluated_at": "2026-02-07 16:29:05",
+  "result_excel_path": "run_results/run_20260207_162905/result.xlsx",
+  "summary_csv_path": "run_results/run_20260207_162905/summary.csv",
+  "input_csv_path": "run_results/run_20260207_162905/input.csv"
+}

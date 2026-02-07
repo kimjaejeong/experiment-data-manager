@@ -44,14 +44,18 @@ streamlit run streamlit_app/app.py
 1. 엑셀 업로드
 2. Judge 모델 선택(복수 선택 가능)
 3. `평가 실행` 클릭
-4. 모델별 정확도/행별 결과 확인
-5. `결과 엑셀 다운로드`
+4. 모델별 정확도 확인 후 자동 저장
+5. `결과 확인` 탭에서 회차별 조회/비교/다운로드/삭제
 
 다운로드 엑셀에는 다음이 포함됩니다.
 - 원본 4컬럼
 - `evaluated_at` (평가 시각)
 - 모델별 `*_result`, `*_score`, `*_match`
 - `summary` 시트(모델별 accuracy/pass rate)
+
+저장 위치:
+- `run_results/<run_id>/result.xlsx`
+- `run_results/<run_id>/metadata.json`
 
 ## Judge 모델 (샘플 3개)
 
