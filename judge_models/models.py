@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import ast
+import json
+import os
 import re
 from dataclasses import asdict
+
+import requests
 
 from .base import JudgeModel, JudgeOutput
 
@@ -24,6 +28,34 @@ def _norm(s: str) -> str:
 
 def _tokens(s: str) -> set[str]:
     return set(re.findall(r"[가-힣a-zA-Z0-9]+", (s or "").lower()))
+
+
+def _extract_json_object(text: str) -> dict:
+    try:
+        return json.loads(text)
+    except Exception:  # noqa: BLE001
+        match = re.search(r"\{[\s\S]*\}", text)
+        if not match:
+            raise ValueError("OpenAI response did not include a JSON object")
+        return json.loads(match.group(0))
+
+
+def _extract_response_text(data: dict) -> str:
+    output_text = data.get("output_text")
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text
+
+    output = data.get("output", [])
+    chunks: list[str] = []
+    for item in output:
+        content = item.get("content", [])
+        for c in content:
+            if c.get("type") in {"output_text", "text"} and c.get("text"):
+                chunks.append(str(c["text"]))
+    if chunks:
+        return "\n".join(chunks)
+
+    raise ValueError("Unable to parse text from OpenAI responses API output")
 
 
 QUESTION_RULES = {
@@ -112,8 +144,72 @@ class LenientPromptJudge(JudgeModel):
         )
 
 
-def available_judges() -> dict[str, JudgeModel]:
-    judges = [StrictRuleJudge(), RagasStyleJudge(), LenientPromptJudge()]
+class OpenAIGPTJudge(JudgeModel):
+    name = "openai_gpt_judge"
+
+    def __init__(self, api_key: str, model: str = "gpt-4o-mini", base_url: str = "https://api.openai.com/v1") -> None:
+        self.api_key = api_key
+        self.model = model
+        self.base_url = base_url.rstrip("/")
+
+    def evaluate(self, question: str, llm_answer: str, retrieved_contexts: str) -> JudgeOutput:
+        context_text = _parse_context(retrieved_contexts)
+
+        system_prompt = (
+            "You are a strict evaluator for QA quality. "
+            "Given question, llm_answer, and retrieved_contexts, judge whether answer is factually supported by contexts and relevant to the question. "
+            "Return ONLY JSON with keys: evaluation_result (boolean), score (0.0-1.0), reason (short string)."
+        )
+        user_prompt = (
+            f"question: {question}\n"
+            f"llm_answer: {llm_answer}\n"
+            f"retrieved_contexts: {context_text}\n"
+            "Output JSON only."
+        )
+
+        payload = {
+            "model": self.model,
+            "input": [
+                {"role": "system", "content": [{"type": "input_text", "text": system_prompt}]},
+                {"role": "user", "content": [{"type": "input_text", "text": user_prompt}]},
+            ],
+            "temperature": 0,
+        }
+
+        resp = requests.post(
+            f"{self.base_url}/responses",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=120,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        text = _extract_response_text(data)
+        parsed = _extract_json_object(text)
+
+        result = bool(parsed.get("evaluation_result", False))
+        score = float(parsed.get("score", 0.0))
+        reason = str(parsed.get("reason", ""))
+        score = max(0.0, min(1.0, score))
+
+        return JudgeOutput(
+            evaluation_result=result,
+            score=round(score, 4),
+            details={"reason": reason, "model": self.model},
+        )
+
+
+def available_judges(openai_api_key: str | None = None, openai_model: str = "gpt-4o-mini") -> dict[str, JudgeModel]:
+    judges: list[JudgeModel] = [StrictRuleJudge(), RagasStyleJudge(), LenientPromptJudge()]
+
+    key = openai_api_key or os.getenv("OPENAI_API_KEY")
+    if key:
+        judges.append(OpenAIGPTJudge(api_key=key, model=openai_model))
+
     return {j.name: j for j in judges}
 
 

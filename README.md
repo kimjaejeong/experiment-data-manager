@@ -62,5 +62,18 @@ streamlit run streamlit_app/app.py
 - `strict_rule_judge`: 질문별 핵심 키워드/금지 키워드 기반
 - `ragas_style_judge`: faithfulness + answer_relevancy 유사 지표 기반
 - `lenient_prompt_judge`: 완화된 점수 기준(문맥 지지 + 과장표현 패널티)
+- `openai_gpt_judge`: OpenAI GPT 호출 기반 판정(옵션)
 
 Judge 모델은 `judge_models/models.py`에서 쉽게 추가할 수 있습니다.
+
+## OpenAI GPT Judge 사용
+
+1. 앱 실행
+2. 좌측 사이드바에서 `OpenAI GPT Judge 사용` 체크
+3. `OPENAI_API_KEY` 입력
+4. 모델명 입력(예: `gpt-4o-mini`)
+5. 평가 실행 시 `openai_gpt_judge` 선택
+
+주의:
+- OpenAI Judge는 네트워크와 API 키가 필요합니다.
+- 호출 실패 시 해당 실험 실행에서 오류 메시지가 표시됩니다.

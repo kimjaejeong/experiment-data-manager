@@ -28,11 +28,23 @@ st.set_page_config(page_title="Simple Judge Lab", layout="wide")
 st.title("Judge 실험 비교")
 st.caption("업로드 → 평가 실행 → 결과 저장 → 결과 확인")
 
+with st.sidebar:
+    st.subheader("OpenAI Judge 설정")
+    enable_openai_judge = st.checkbox("OpenAI GPT Judge 사용", value=False)
+    openai_api_key = st.text_input("OPENAI_API_KEY", type="password", value="")
+    openai_model = st.text_input("OpenAI 모델", value="gpt-4o-mini")
+
 tab_eval, tab_result = st.tabs(["평가 실행", "결과 확인"])
 
 with tab_eval:
+    judges_map = available_judges(
+        openai_api_key=openai_api_key if enable_openai_judge else None,
+        openai_model=openai_model,
+    )
+    if enable_openai_judge and "openai_gpt_judge" not in judges_map:
+        st.warning("OpenAI Judge를 사용하려면 API Key를 입력하거나 OPENAI_API_KEY 환경변수를 설정하세요.")
     uploaded = st.file_uploader("엑셀 업로드 (.xlsx)", type=["xlsx"])
-    judge_names = list(available_judges().keys())
+    judge_names = list(judges_map.keys())
     selected_judges = st.multiselect("Judge 모델", judge_names, default=judge_names)
     run_name = st.text_input("실험 이름 (직접 입력)", value="", placeholder="예: 2026-02-07_judge_abtest_v1")
 
@@ -54,9 +66,16 @@ with tab_eval:
                     if not run_name.strip():
                         st.error("실험 이름을 입력해 주세요.")
                         st.stop()
+                    if not selected_judges:
+                        st.error("최소 1개 Judge 모델을 선택해 주세요.")
+                        st.stop()
 
                     validate_input(input_df)
-                    result_df, summary_df, evaluated_at = evaluate_dataframe(input_df, selected_judges)
+                    result_df, summary_df, evaluated_at = evaluate_dataframe(
+                        input_df,
+                        selected_judges,
+                        judges_map=judges_map,
+                    )
 
                     run_id = datetime.now().strftime("run_%Y%m%d_%H%M%S")
                     summary_df["run_id"] = run_id
@@ -95,11 +114,11 @@ with tab_result:
         selected_label = c1.selectbox("실험 선택", run_options)
         selected_run_id = selected_label.split(" | ")[0]
 
-        judge_filter = c2.selectbox("Judge 필터", ["all"] + list(available_judges().keys()))
-
         st.dataframe(runs_df[["run_id", "run_name", "source_filename", "rows", "evaluated_at"]], use_container_width=True)
 
         metadata, result_df, summary_df = load_run(selected_run_id)
+        filter_options = ["all"] + sorted(summary_df["judge_model"].astype(str).unique().tolist())
+        judge_filter = c2.selectbox("Judge 필터", filter_options)
 
         if judge_filter != "all":
             summary_df = summary_df[summary_df["judge_model"] == judge_filter]

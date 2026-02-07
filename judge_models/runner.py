@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pandas as pd
 
+from .base import JudgeModel
 from .models import available_judges
 
 REQUIRED_COLUMNS = ["question", "llm_answer", "retrieved_contexts", "user_review"]
@@ -15,9 +16,13 @@ def validate_input(df: pd.DataFrame) -> None:
         raise ValueError(f"Missing required columns: {missing}")
 
 
-def evaluate_dataframe(df: pd.DataFrame, judge_names: list[str]) -> tuple[pd.DataFrame, pd.DataFrame, str]:
+def evaluate_dataframe(
+    df: pd.DataFrame,
+    judge_names: list[str],
+    judges_map: dict[str, JudgeModel] | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame, str]:
     validate_input(df)
-    judges = available_judges()
+    judges = judges_map or available_judges()
 
     selected = [name for name in judge_names if name in judges]
     if not selected:

@@ -1,4 +1,0 @@
-judge_model,accuracy_pct,pass_rate_pct,avg_score,rows,evaluated_at,run_id
-ragas_style_judge,80.0,10.0,0.2368,10,2026-02-07 16:29:16,run_20260207_162916
-lenient_prompt_judge,10.0,100.0,0.7837,10,2026-02-07 16:29:16,run_20260207_162916
-strict_rule_judge,80.0,30.0,0.1667,10,2026-02-07 16:29:16,run_20260207_162916
