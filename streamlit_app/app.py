@@ -34,7 +34,7 @@ with tab_eval:
     uploaded = st.file_uploader("엑셀 업로드 (.xlsx)", type=["xlsx"])
     judge_names = list(available_judges().keys())
     selected_judges = st.multiselect("Judge 모델", judge_names, default=judge_names)
-    run_name = st.text_input("실험 이름", value=f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+    run_name = st.text_input("실험 이름 (직접 입력)", value="", placeholder="예: 2026-02-07_judge_abtest_v1")
 
     if uploaded is not None:
         raw_df = pd.read_excel(uploaded)
@@ -51,6 +51,10 @@ with tab_eval:
 
             if st.button("평가 실행 및 저장", type="primary"):
                 try:
+                    if not run_name.strip():
+                        st.error("실험 이름을 입력해 주세요.")
+                        st.stop()
+
                     validate_input(input_df)
                     result_df, summary_df, evaluated_at = evaluate_dataframe(input_df, selected_judges)
 
@@ -59,7 +63,7 @@ with tab_eval:
 
                     metadata = save_run(
                         run_id=run_id,
-                        run_name=run_name,
+                        run_name=run_name.strip(),
                         source_filename=uploaded.name,
                         judges=selected_judges,
                         evaluated_at=evaluated_at,
